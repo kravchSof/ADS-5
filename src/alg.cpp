@@ -1,6 +1,9 @@
 // Copyright 2021 NNTU-CS
 #ifndef INCLUDE_TSTACK_H_
 #define INCLUDE_TSTACK_H_
+
+#include <stdexcept>  // Add this for std::runtime_error
+
 #define SIZE 100
 
 template <typename T> class TStack {
@@ -38,6 +41,6 @@ template <typename T> class TStack {
   bool isFull() const { return topIndex == SIZE - 1; }
 
   int getSize() const { return topIndex + 1; }
-};
+};  // Add semicolon here
 
 #endif // INCLUDE_TSTACK_H_
