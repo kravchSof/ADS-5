@@ -1,91 +1,103 @@
 // Copyright 2025 NNTU-CS
-#include <iostream>
-#include <map>
 #include <string>
-#include <cstdint>
+#include <map>
+#include <cctype>
 #include "tstack.h"
 
-
-bool isDigit(char sym) { return sym >= 48 && sym <= 57; }
-
-bool isOperator(char sym) {
-  return sym == '+' || sym == '-' || sym == '*' || sym == '/' || sym == '(' ||
-         sym == ')';
-}
-
-uint8_t getPrior(char oper) {
-  std::map<char, uint8_t> prior = {
-      {'(', 0}, {')', 1}, {'+', 2}, {'-', 2}, {'*', 3}, {'/', 3},
-  };
-
-  return prior[oper];
-}
-
-int calc(char oper, int x, int y) {
-  switch (oper) {
-  case '+':
-    return x + y;
-  case '-':
-    return x - y;
-  case '*':
-    return x * y;
-  case '/':
-    return x / y;
-  default:
-    return 0;
-  }
-}
-
-std::string infx2pstfx(const std::string &inf) { //(2-1)*(6+2)
-  std::string output;
-  TStack<char> operations;
-  for (char sym : inf) {
-    if (isDigit(sym)) {
-      output += sym;
-      output += ' ';
-    } else if (isOperator(sym)) {
-        if (sym == '(') {
-        operations.push(sym);
-      } else if (sym == ')') {
-        while (!operations.isEmpty() && operations.top() != '(') {
-          output += operations.pop();
-          output += ' ';
-        }
-        operations.pop();
-
-      } else if (operations.isEmpty() ||
-                 getPrior(sym) > getPrior(operations.top())) {
-        operations.push(sym);
-      } else if (getPrior(sym) <= getPrior(operations.top())) {
-        while (!operations.isEmpty() && operations.top() != '(' &&
-               getPrior(sym) <= getPrior(operations.top())) {
-          output += operations.pop();
-          output += ' ';
-        }
-        operations.push(sym);
-      }
+int getPriority(char op) {
+    switch (op) {
+        case '(': return 0;
+        case ')': return 1;
+        case '+': return 2;
+        case '-': return 2;
+        case '*': return 3;
+        case '/': return 3;
+        default: return -1;
     }
-  }
-
-  while (!operations.isEmpty()) {
-    output += operations.pop();
-    output += ' ';
-  }
-  output.pop_back();
-  return output;
 }
 
-int eval(const std::string &pref) {
-  TStack<int> stack;
-  for (char sym : pref) {
-    if (isDigit(sym)) {
-      stack.push(sym - '0');
-    } else if (isOperator(sym)) {
-      int y = stack.pop();
-      int x = stack.pop();
-      int res = calc(sym, x, y);
-      stack.push(res);
+std::string infx2pstfx(const std::string& inf) {
+    TStack<char, 100> stack;
+    std::string result = "";
+
+    for (size_t i = 0; i < inf.length(); ++i) {
+        char ch = inf[i];
+
+        if (ch == ' ') {
+            continue;
+        }
+
+        if (isdigit(ch)) {
+            while (i < inf.length() && isdigit(inf[i])) {
+                result += inf[i];
+                ++i;
+            }
+            result += ' ';
+            --i;
+        } else if (ch == '(') {
+            stack.push(ch);
+        } else if (ch == ')') {
+            while (!stack.isEmpty() && stack.top() != '(') {
+                result += stack.pop();
+                result += ' ';
+            }
+            if (!stack.isEmpty() && stack.top() == '(') {
+                stack.pop();
+            }
+        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            while (!stack.isEmpty() &&
+                   getPriority(stack.top()) >= getPriority(ch)) {
+                result += stack.pop();
+                result += ' ';
+            }
+            stack.push(ch);
+        }
     }
-  }
-  return stack.pop();
+
+    while (!stack.isEmpty()) {
+        result += stack.pop();
+        result += ' ';
+    }
+
+    if (!result.empty() && result.back() == ' ') {
+        result.pop_back();
+    }
+
+    return result;
+}
+
+int eval(const std::string& pref) {
+    TStack<int, 100> stack;
+
+    for (size_t i = 0; i < pref.length(); ++i) {
+        char ch = pref[i];
+
+        if (ch == ' ') {
+            continue;
+        }
+
+        if (isdigit(ch)) {
+            int number = 0;
+            while (i < pref.length() && isdigit(pref[i])) {
+                number = number * 10 + (pref[i] - '0');
+                ++i;
+            }
+            stack.push(number);
+            --i;
+        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            int operand2 = stack.pop();
+            int operand1 = stack.pop();
+            int result = 0;
+
+            switch (ch) {
+                case '+': result = operand1 + operand2; break;
+                case '-': result = operand1 - operand2; break;
+                case '*': result = operand1 * operand2; break;
+                case '/': result = operand1 / operand2; break;
+            }
+            stack.push(result);
+        }
+    }
+
+    return stack.pop();
 }
