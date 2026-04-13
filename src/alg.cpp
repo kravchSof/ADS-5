@@ -1,46 +1,72 @@
-// Copyright 2021 NNTU-CS
-#ifndef INCLUDE_TSTACK_H_
-#define INCLUDE_TSTACK_H_
+#include "alg.h"
+#include "../include/TStack.h"  // Your TStack header
+#include <string>
+#include <cctype>
+#include <map>
 
-#include <stdexcept>  // Add this for std::runtime_error
-
-#define SIZE 100
-
-template <typename T> class TStack {
- private:
-  T stack[SIZE];
-  int topIndex;
-
- public:
-  TStack() : topIndex(-1) {}
-
-  int push(T value) {
-    if (topIndex >= SIZE - 1) {
-      throw std::runtime_error("Stack overflow!");
-    }
-    stack[++topIndex] = value;
+// Function to determine operator precedence
+int precedence(char op) {
+    if (op == '+' || op == '-') return 1;
+    if (op == '*' || op == '/') return 2;
     return 0;
-  }
+}
 
-  T pop() {
-    if (isEmpty()) {
-      throw std::runtime_error("Stack is empty!!");
+// Convert infix to postfix
+std::string infx2pstfx(const std::string& infix) {
+    TStack<char> stack;
+    std::string postfix;
+    
+    for (char ch : infix) {
+        if (isdigit(ch)) {
+            postfix += ch;
+        } 
+        else if (ch == '(') {
+            stack.push(ch);
+        }
+        else if (ch == ')') {
+            while (!stack.isEmpty() && stack.top() != '(') {
+                postfix += stack.pop();
+            }
+            if (!stack.isEmpty()) stack.pop(); // Remove '('
+        }
+        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            while (!stack.isEmpty() && stack.top() != '(' && 
+                   precedence(stack.top()) >= precedence(ch)) {
+                postfix += stack.pop();
+            }
+            stack.push(ch);
+        }
     }
-    return stack[topIndex--];
-  }
-
-  T top() const {
-    if (isEmpty()) {
-      throw std::runtime_error("Stack is empty!");
+    
+    while (!stack.isEmpty()) {
+        postfix += stack.pop();
     }
-    return stack[topIndex];
-  }
+    
+    return postfix;
+}
 
-  bool isEmpty() const { return topIndex == -1; }
-
-  bool isFull() const { return topIndex == SIZE - 1; }
-
-  int getSize() const { return topIndex + 1; }
-};  // Add semicolon here
-
-#endif // INCLUDE_TSTACK_H_
+// Evaluate postfix expression
+double eval(const std::string& postfix) {
+    TStack<double> stack;
+    
+    for (char ch : postfix) {
+        if (isdigit(ch)) {
+            stack.push(ch - '0');  // Convert char to int
+        }
+        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            double b = stack.pop();
+            double a = stack.pop();
+            double result;
+            
+            switch (ch) {
+                case '+': result = a + b; break;
+                case '-': result = a - b; break;
+                case '*': result = a * b; break;
+                case '/': result = a / b; break;
+            }
+            stack.push(result);
+        }
+    }
+    
+    return stack.pop();
+}
