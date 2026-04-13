@@ -1,72 +1,91 @@
-#include "alg.h"
-#include "../include/TStack.h"  // Your TStack header
-#include <string>
-#include <cctype>
+// Copyright 2025 NNTU-CS
+#include <iostream>
 #include <map>
+#include <string>
+#include <cstdint>
+#include "tstack.h"
 
-// Function to determine operator precedence
-int precedence(char op) {
-    if (op == '+' || op == '-') return 1;
-    if (op == '*' || op == '/') return 2;
+
+bool isDigit(char sym) { return sym >= 48 && sym <= 57; }
+
+bool isOperator(char sym) {
+  return sym == '+' || sym == '-' || sym == '*' || sym == '/' || sym == '(' ||
+         sym == ')';
+}
+
+uint8_t getPrior(char oper) {
+  std::map<char, uint8_t> prior = {
+      {'(', 0}, {')', 1}, {'+', 2}, {'-', 2}, {'*', 3}, {'/', 3},
+  };
+
+  return prior[oper];
+}
+
+int calc(char oper, int x, int y) {
+  switch (oper) {
+  case '+':
+    return x + y;
+  case '-':
+    return x - y;
+  case '*':
+    return x * y;
+  case '/':
+    return x / y;
+  default:
     return 0;
+  }
 }
 
-// Convert infix to postfix
-std::string infx2pstfx(const std::string& infix) {
-    TStack<char> stack;
-    std::string postfix;
-    
-    for (char ch : infix) {
-        if (isdigit(ch)) {
-            postfix += ch;
-        } 
-        else if (ch == '(') {
-            stack.push(ch);
+std::string infx2pstfx(const std::string &inf) { //(2-1)*(6+2)
+  std::string output;
+  TStack<char> operations;
+  for (char sym : inf) {
+    if (isDigit(sym)) {
+      output += sym;
+      output += ' ';
+    } else if (isOperator(sym)) {
+        if (sym == '(') {
+        operations.push(sym);
+      } else if (sym == ')') {
+        while (!operations.isEmpty() && operations.top() != '(') {
+          output += operations.pop();
+          output += ' ';
         }
-        else if (ch == ')') {
-            while (!stack.isEmpty() && stack.top() != '(') {
-                postfix += stack.pop();
-            }
-            if (!stack.isEmpty()) stack.pop(); // Remove '('
+        operations.pop();
+
+      } else if (operations.isEmpty() ||
+                 getPrior(sym) > getPrior(operations.top())) {
+        operations.push(sym);
+      } else if (getPrior(sym) <= getPrior(operations.top())) {
+        while (!operations.isEmpty() && operations.top() != '(' &&
+               getPrior(sym) <= getPrior(operations.top())) {
+          output += operations.pop();
+          output += ' ';
         }
-        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
-            while (!stack.isEmpty() && stack.top() != '(' && 
-                   precedence(stack.top()) >= precedence(ch)) {
-                postfix += stack.pop();
-            }
-            stack.push(ch);
-        }
+        operations.push(sym);
+      }
     }
-    
-    while (!stack.isEmpty()) {
-        postfix += stack.pop();
-    }
-    
-    return postfix;
+  }
+
+  while (!operations.isEmpty()) {
+    output += operations.pop();
+    output += ' ';
+  }
+  output.pop_back();
+  return output;
 }
 
-// Evaluate postfix expression
-double eval(const std::string& postfix) {
-    TStack<double> stack;
-    
-    for (char ch : postfix) {
-        if (isdigit(ch)) {
-            stack.push(ch - '0');  // Convert char to int
-        }
-        else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
-            double b = stack.pop();
-            double a = stack.pop();
-            double result;
-            
-            switch (ch) {
-                case '+': result = a + b; break;
-                case '-': result = a - b; break;
-                case '*': result = a * b; break;
-                case '/': result = a / b; break;
-            }
-            stack.push(result);
-        }
+int eval(const std::string &pref) {
+  TStack<int> stack;
+  for (char sym : pref) {
+    if (isDigit(sym)) {
+      stack.push(sym - '0');
+    } else if (isOperator(sym)) {
+      int y = stack.pop();
+      int x = stack.pop();
+      int res = calc(sym, x, y);
+      stack.push(res);
     }
-    
-    return stack.pop();
+  }
+  return stack.pop();
 }
