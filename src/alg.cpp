@@ -1,41 +1,43 @@
 // Copyright 2021 NNTU-CS
 #ifndef INCLUDE_TSTACK_H_
 #define INCLUDE_TSTACK_H_
+#define SIZE 100
 
-template<typename T,  int kSize>
-class TStack {
+template <typename T> class TStack {
  private:
-  int top;
-  T data[kSize];
+  T stack[SIZE];
+  int topIndex;
 
  public:
-  TStack(): top(-1) {}
+  TStack() : topIndex(-1) {}
 
-  bool isEmpty() {
-    return top == -1;
-  }
-
-  bool isFull() {
-    return (top >= kSize);
-  }
-
-  void push(T el) {
-    if (!this->isFull()) {
-      top++;
-      data[top] = el;
+  int push(T value) {
+    if (topIndex >= SIZE - 1) {
+      throw std::runtime_error("Stack overflow!");
     }
+    stack[++topIndex] = value;
+    return 0;
   }
 
-  void pop() {
-    if (!this->isEmpty()) {
-      data[top] = 0;
-      top--;
+  T pop() {
+    if (isEmpty()) {
+      throw std::runtime_error("Stack is empty!!");
     }
+    return stack[topIndex--];
   }
 
-  T peek() {
-    return data[top];
+  T top() const {
+    if (isEmpty()) {
+      throw std::runtime_error("Stack is empty!");
+    }
+    return stack[topIndex];
   }
+
+  bool isEmpty() const { return topIndex == -1; }
+
+  bool isFull() const { return topIndex == SIZE - 1; }
+
+  int getSize() const { return topIndex + 1; }
 };
 
-#endif  // INCLUDE_TSTACK_H_
+#endif // INCLUDE_TSTACK_H_
