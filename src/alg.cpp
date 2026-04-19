@@ -1,103 +1,119 @@
 // Copyright 2025 NNTU-CS
-#include <string>
-#include <map>
-#include <cctype>
-#include "tstack.h"
 
-int getPriority(char op) {
-    switch (op) {
-        case '(': return 0;
-        case ')': return 1;
-        case '+': return 2;
-        case '-': return 2;
-        case '*': return 3;
-        case '/': return 3;
-        default: return -1;
-    }
+#include <string>
+#include <stack>
+#include <cctype>
+#include <sstream>
+#include <stdexcept>
+
+int Oper(char op) {
+    if (op == '+' || op == '-') return 1;
+    if (op == '*' || op == '/') return 2;
+    return 0;
 }
 
 std::string infx2pstfx(const std::string& inf) {
-    TStack<char, 100> stack;
-    std::string result = "";
+    std::stack<char> ops;
+    std::string output;
 
     for (size_t i = 0; i < inf.length(); ++i) {
-        char ch = inf[i];
+        char tkn = inf[i];
 
-        if (ch == ' ') {
-            continue;
+        if (std::isalnum(tkn)) {
+            if (!output.empty() && output.back() != ' ') {
+                output += ' ';
+            }
+            output += tkn;
+        } else if (tkn == '+' || tkn == '-' ||
+                   tkn == '*' || tkn == '/') {
+            while (!ops.empty() && ops.top() != '(' &&
+                   Oper(ops.top()) >= Oper(tkn)) {
+                if (!output.empty() && output.back() != ' ') {
+                    output += ' ';
+                }
+                output += ops.top();
+                ops.pop();
+            }
+            ops.push(tkn);
+        } else if (tkn == '(') {
+            ops.push(tkn);
+        } else if (tkn == ')') {
+            bool foundOpeningBracket = false;
+            while (!ops.empty()) {
+                char topOp = ops.top();
+                if (topOp == '(') {
+                    foundOpeningBracket = true;
+                    ops.pop();
+                    break;
+                }
+                if (!output.empty() && output.back() != ' ') {
+                    output += ' ';
+                }
+                output += topOp;
+                ops.pop();
+            }
+
+            if (!foundOpeningBracket) {
+                throw std::runtime_error("Mismatched parentheses");
+            }
         }
+    }
 
-        if (isdigit(ch)) {
-            while (i < inf.length() && isdigit(inf[i])) {
-                result += inf[i];
-                ++i;
-            }
-            result += ' ';
-            --i;
-        } else if (ch == '(') {
-            stack.push(ch);
-        } else if (ch == ')') {
-            while (!stack.isEmpty() && stack.top() != '(') {
-                result += stack.pop();
-                result += ' ';
-            }
-            if (!stack.isEmpty() && stack.top() == '(') {
-                stack.pop();
-            }
-        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
-            while (!stack.isEmpty() &&
-                   getPriority(stack.top()) >= getPriority(ch)) {
-                result += stack.pop();
-                result += ' ';
-            }
-            stack.push(ch);
+    while (!ops.empty()) {
+        if (!output.empty() && output.back() != ' ') {
+            output += ' ';
         }
+        output += ops.top();
+        ops.pop();
     }
-
-    while (!stack.isEmpty()) {
-        result += stack.pop();
-        result += ' ';
+    if (!output.empty() && output[0] == ' ') {
+        output.erase(0, 1);
     }
-
-    if (!result.empty() && result.back() == ' ') {
-        result.pop_back();
-    }
-
-    return result;
+    return output;
 }
 
-int eval(const std::string& pref) {
-    TStack<int, 100> stack;
+int eval(const std::string& post) {
+    std::stack<int> values;
+    std::istringstream iss(post);
+    std::string tkn;
 
-    for (size_t i = 0; i < pref.length(); ++i) {
-        char ch = pref[i];
-
-        if (ch == ' ') {
-            continue;
-        }
-
-        if (isdigit(ch)) {
-            int number = 0;
-            while (i < pref.length() && isdigit(pref[i])) {
-                number = number * 10 + (pref[i] - '0');
-                ++i;
+    while (iss >> tkn) {
+        if (std::isdigit(tkn[0]) ||
+            (tkn[0] == '-' && tkn.length() > 1 &&
+             std::isdigit(tkn[1]))) {
+            values.push(std::stoi(tkn));
+        } else {
+            if (values.size() < 2) {
+                throw std::runtime_error(
+                    "Invalid expression: insufficient operands");
             }
-            stack.push(number);
-            --i;
-        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
-            int operand2 = stack.pop();
-            int operand1 = stack.pop();
-            int result = 0;
+            int right = values.top(); values.pop();
+            int left = values.top(); values.pop();
 
-            switch (ch) {
-                case '+': result = operand1 + operand2; break;
-                case '-': result = operand1 - operand2; break;
-                case '*': result = operand1 * operand2; break;
-                case '/': result = operand1 / operand2; break;
+            switch (tkn[0]) {
+                case '+':
+                    values.push(left + right);
+                    break;
+                case '-':
+                    values.push(left - right);
+                    break;
+                case '*':
+                    values.push(left * right);
+                    break;
+                case '/':
+                    if (right == 0) {
+                        throw std::runtime_error("Division by zero");
+                    }
+                    values.push(left / right);
+                    break;
+                default:
+                    throw std::runtime_error("Unknown operator");
             }
-            stack.push(result);
         }
     }
 
-    return stack.pop();
+    if (values.size() != 1) {
+        throw std::runtime_error("Invalid expression");
+    }
+    return values.top();
 }
